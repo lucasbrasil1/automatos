@@ -43,13 +43,7 @@ const InstrucoesFinito = () => {
             return;
         }
 
-        dispatch(addInstrucao(
-            {
-                from: newInstructionFrom,
-                value: newInstructionValue,
-                to: newInstructionTo,
-            }
-        ))
+        dispatch(addInstrucao(obj))
     }
 
     function invalidInstruction(obj) {
