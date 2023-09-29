@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { addSimbolo, removeSimbolo, selectCurrentAlfabeto } from './alfabetoSlice'
-import { addEstado, selectCurrentEstadoFinal, selectCurrentEstados } from './estadosSlice';
-import { addInstrucao, selectCurrentInstrucoes } from './instrucoesSlice';
+import { selectCurrentAlfabeto } from './alfabetoSlice'
+import { selectCurrentEstadoFinal, selectCurrentEstados } from './estadosSlice';
+import { selectCurrentInstrucoes } from './instrucoesSlice';
 import Alfabeto from './Alfabeto';
-import { fail, selectExecutionExecuting, start, stop, success, next, selectExecutionCurrentState, selectExecutionMessage, selectExecutionInput } from './executionSlice';
+import { fail, selectExecutionExecuting, success, next, selectExecutionCurrentState, selectExecutionMessage, selectExecutionInput } from './executionSlice';
 import { selectExecutionSuccess } from './executionSlice';
+import AddEstados from './AddEstados';
+import InstrucoesFinito from './InstrucoesFinito';
 
 const Finito = () => {
-    
+
     const alfabeto = useSelector(selectCurrentAlfabeto);
     const estados = useSelector(selectCurrentEstados);
     const instrucoes = useSelector(selectCurrentInstrucoes)
@@ -19,78 +21,9 @@ const Finito = () => {
     const executionMessage = useSelector(selectExecutionMessage);
     const isSuccess = useSelector(selectExecutionSuccess);
 
-    const [newInstructionFrom, setNewInstructionFrom] = useState();
-    const [newInstructionValue, setNewInstructionValue] = useState();
-    const [newInstructionTo, setNewInstructionTo] = useState();
-    const [invalidNewInstruction, setInvalidNewInstruction] = useState('');
-    const [isValidAutomate, setValidAutomate] = useState(false);
     const [tryValue, setTryValue] = useState('');
 
-    const handleChangeNewInstructionFrom = (e) => setNewInstructionFrom(e.target.value)
-    const handleChangeNewInstructionValue = (e) => setNewInstructionValue(e.target.value)
-    const handleChangeNewInstructionTo = (e) => setNewInstructionTo(e.target.value)
-
     const dispatch = useDispatch()
-
-    
-
-    const handleDeleteSymbol = (i) => {
-        dispatch(removeSimbolo(i));
-    }
-
-    const handleAddEstado = () => {
-        dispatch(addEstado());
-    }
-
-    const handleAddEstadoFinal = () => {
-        dispatch(addEstado({ final: true }));
-    }
-
-
-    const handleAddInstrucao = () => {
-        const obj = {
-            from: newInstructionFrom,
-            value: newInstructionValue,
-            to: newInstructionTo,
-        }
-
-        const error = invalidInstruction(obj);
-        if (invalidInstruction(obj)) {
-            setInvalidNewInstruction(error);
-            console.log("Inválido")
-            return;
-        }
-
-        dispatch(addInstrucao(
-            {
-                from: newInstructionFrom,
-                value: newInstructionValue,
-                to: newInstructionTo,
-            }
-        ))
-    }
-
-    function invalidInstruction(obj) {
-        if (!obj.from || !obj.value || !obj.to ||
-            obj.from === "" || obj.value === "" || obj.to === "" ||
-            obj.from === "-" || obj.value === "-" || obj.to === "-") {
-            return "Não pode ter valores vazios!";
-        }
-
-        if (instrucoes.some(instrucao => instrucao.from === obj.from && instrucao.value === obj.value)) {
-            return `Já existe a instrução ${obj.from} -> ${obj.value}`;
-        }
-
-        if (instrucoes.some(instrucao => instrucao.from === obj.from && instrucao.to === obj.to)) {
-            return `Já existe a instrução ${obj.from} -> ${obj.to}`;
-        }
-
-        return "";
-    }
-
-    const handleExecute = () => {
-        dispatch(start());
-    }
 
     const handleChangeValue = (e) => {
         const value = e.target.value
@@ -98,16 +31,9 @@ const Finito = () => {
     }
 
     const validateAutomate = (v) => {
-        if (!instrucoes.length) {
-            return false;
-        }
-
-        if (!alfabeto.includes(v)) {
-            return false;
-        }
+        if (isSuccess || !instrucoes.length || !alfabeto.includes(v)) return;
 
         const instr = instrucoes.find(i => i.from === state && i.value === v);
-
 
         if (instr) {
             const { from, value, to } = instr;
@@ -121,10 +47,6 @@ const Finito = () => {
             dispatch(fail());
         }
     }
-
-    useEffect(() => {
-        setValidAutomate(!!instrucoes.find(q => finais.includes(q.to)));
-    }, [instrucoes])
 
     return (
         <div className='flex justify-center'>
@@ -156,41 +78,12 @@ const Finito = () => {
                         </div>
                     </div>
                     <div className='bg-zinc-500 basis-1/4 flex flex-col p-1 rounded-xl'>
-                        <div className='flex flex-col border-b gap-1'>
-                            <Alfabeto />
-                            <div className='flex flex-col'>
-                                <div className='flex gap-1'>
-                                    <div className='text-3xl flex flex-wrap gap-1'>Σ:  {alfabeto && alfabeto.map((s, i) => <div key={i} onClick={() => handleDeleteSymbol(i)} className='px-1 bg-zinc-600 rounded-full hover:bg-red-400 cursor-pointer'>
-                                        {s}
-                                    </div>)}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='flex flex-col border-b gap-1 p-1'>
-                            <button disabled={executing} className='bg-zinc-600 rounded' onClick={() => handleAddEstado()}>Adicionar Estado {!estados.length && <b>Inicial</b>}</button>
-                            <button disabled={executing} className='bg-zinc-600 rounded' onClick={() => handleAddEstadoFinal()}>Adicionar Estado <b>Final</b></button>
-                        </div>
-                        <div className='flex flex-col gap-1 p-1'>
-                            <p>Instruções Rotuladas</p>
-                            <div className='flex gap-1'>
-                                {!executing &&
-                                <>δ(<select onChange={handleChangeNewInstructionFrom}><option>-</option>
-                                    {estados.filter(e => !finais.includes(e)).map(e => <option key={e} value={e}>{e}</option>)}</select> ,
-                                <select onChange={handleChangeNewInstructionValue}><option>-</option>
-                                    {alfabeto.map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>) =
-                                <select className={finais.includes(newInstructionTo) && 'bg-red-200'} onChange={handleChangeNewInstructionTo}><option className='bg-white'>-</option>
-                                    {estados.map(e => <option className={finais.includes(e) && e !== '' ? 'bg-red-200' : 'bg-white'} key={e} value={e}>{e}</option>)}
-                                </select>
-                                </>}
-                            </div>
-                            {invalidNewInstruction !== '' && <p className='text-red-100'>{invalidNewInstruction}</p>}
-                            <button disabled={executing} onClick={handleAddInstrucao} className='bg-zinc-600 my-1 rounded'>Adicionar Instrução</button>
 
-                            {executing ?
-                                <button onClick={() => dispatch(stop())} className='bg-zinc-600 rounded'>Parar execução</button>
-                                : isValidAutomate ? <button onClick={handleExecute} className='bg-zinc-600 rounded'>Executar</button> : null}
-                        </div>
+                        <Alfabeto />
+
+                        <AddEstados />
+
+                        <InstrucoesFinito />
                     </div>
                 </div>
             </div>
